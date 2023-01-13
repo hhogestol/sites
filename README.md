@@ -1,1 +1,1 @@
-### Example of a lab in Energy Industry Analytics
+### Example labs in Energy Industry Analytics.
