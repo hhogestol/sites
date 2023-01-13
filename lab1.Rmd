@@ -1,0 +1,349 @@
+---
+title: "Lab1_ENE434"
+author: "Håvard Jacobsen Høgestøl"
+date: "2/5/2022"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+title: "labs_ene434"
+output: pdf_document
+---
+```{r load-packages, include=FALSE}
+library(magrittr)
+library(knitr)
+library(tidyverse)
+library(ggmap)
+library(devtools)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+options(tinytex.verbose = TRUE)
+```
+
+# ENE434 - LABS
+
+### This file is part of the ENE434 elective at NHH.
+### It contains all the Labs that are part of the ENE434.
+
+### Created by: Håvard Jacobsen Høgestøl.
+
+
+
+# Lab 1: Introduction to R, cleaning data, and oil and gas data.
+
+**I will use data from "Norwegian Petroleum Industry and the Norwegian Continental Shelf: A Primer".**
+
+```{r}
+library(readr)
+oil_fields=data.frame(read_csv("http://jmaurit.github.io/analytics/labs/data/oil_fields_cross.csv"))
+```
+
+
+##Looking at the data:
+
+Now that we have imported the data and put it in the object called oil_fields, we can look at it in a few different ways. 
+One is to click on the dataframe in the upper right-hand side box under environment and data. This brings up a window where you can scroll through the data.
+You could also do this by typing in the command:
+
+Another option is to just display the first 5 rows of the data by typing:
+```{r}
+head(oil_fields, 5)
+
+```
+
+Or just write the object name:
+```{r}
+oil_fields
+
+```
+
+If we want to look at the last few rows of our data frame, we can use the command tail:
+```{r}
+tail(oil_fields, n=10)
+```
+
+If we want to get an overview of our data frame, we can use the str function.
+```{r}
+str(oil_fields)
+```
+
+If we want to access an individual variable, we can use the $ character:
+```{r}
+head(oil_fields$recoverable_oil)
+
+```
+
+Using the class command, we can see what format a certain variable is in (which we could also see from str for all the variables):
+```{r}
+class(oil_fields$producing_from)
+
+```
+
+
+##Creating our first plot with ggplot
+
+Specify which dataset to use (oil_fields) within the ggplot command. The aesthetics of the plot is specified with aes.
+We specify producing_from as the horizontal distance (x-axis) and recoverable_oil as vertical distance (y-axis).
+Then we add a layer with + and then geom_point. The data is then represented in form of visual points. 
+```{r}
+oil_fields %>% ggplot(aes(x=producing_from, y=recoverable_oil)) +
+  geom_point()
+```
+
+
+## Exercises:
+
+What does this figure say about the distribution of oil finds through time?
+What we see on the graph is something that is called creaming in the industry. Can you explain this?
+
+###Tidying up the chart:
+```{r}
+ggplot(oil_fields, aes(x=producing_from, y=recoverable_oil)) +
+  geom_point() +
+  labs(x="", y="Recoverable Oil, Million SM3")
+```
+
+Now we state the variable and unit on the y-axis. SM3 stands for standard cubic meter at 15 degrees celsius and under normal atmospheric pressure.
+
+We can also look at a histogram to more clearly see the distribution of finds:
+```{r}
+ggplot(oil_fields, aes(x=recoverable_oil)) +
+  geom_histogram()
+```
+
+Here we see clearly that most finds tend to be small, but we have a “fat tail”, with a few super large fields. 
+The outliers you see here are the Statfjord and Ekofisk fields, which were also the first two fields to be found.
+
+Now lets say we want to create a new variable: extracted, which is the difference between the total amount of recoverable oil in each field and the remaining oil in the field (this data is a few years old so the amounts have changed a bit.)
+```{r}
+oil_fields$extracted=oil_fields$recoverable_oil-oil_fields$remaining_oil
+```
+
+Now lets create another variable which gives us amount of investment per extracted SM3 of oil:
+```{r}
+oil_fields$invest_per_millsm3 = oil_fields$total.invest/oil_fields$extracted
+```
+or
+```{r}
+oil_fields["invest_per_millsm3"]=oil_fields$total.invest/oil_fields$extracted
+```
+
+In the field above, notice that I have written two ways of creating a new variable (corresponding to two ways of accessing a certain variable/column). 
+You can either use the $ marker or use block quotes with the column name in quotes: [“var name”]. The latter method works for any type of variable name, where the former only works if the variable is one word.
+```{r}
+ggplot(oil_fields, aes(x=recoverable_oil, y=invest_per_millsm3)) +
+  geom_point()
+```
+
+
+What does this plot tell us? Are there problems with the variables we have chosen to plot and the way we have chosen to plot them?
+Lets try plotting investment per extracted SM3 of oil against the start of production date.
+```{r}
+ggplot(oil_fields, aes(x=producing_from, y=log(invest_per_millsm3))) +
+  geom_point()
+```
+
+Transforms the y-variable to log. Makes it more linear and easier to interpret. 
+You can judge the slope of the line as a rate of growth. 
+
+The investment per production is lowest in the older fields. 
+Investments (and costs) are front-loaded. A large portion of the costs of extracting oil and gas off-shore is in the initial build-out of the field and related infrastructure.
+The actual running costs once the field is up-and-running is relatively low. Thus, we see, that costs per extracted oil are exponentially higher for newer fields.
+
+
+##Neutrality of Norwegian Oil and Gas
+This fact is very important in understanding Norwegian taxation policy. The marginal taxation rate on profits from oil and gas extraction is very high: nearly 80 percent: 22% corporation tax + 56% resource tax (plus other environmental fees, auction rights, etc).
+
+However, petroleum extraction companies are given special taxation rules aimed at making investment in the petroleum industry “neutral.” That means, taxation is designed such that investments that would have been undertaken before tax, would also be taken pre-tax. A few hallmarks of the “neutral” tax system include:
+* Only the companies net profit (after costs, fees, etc) is taxable
+* Losses may be carried forward with interest
+* A company that has no taxable income, can carry forward losses to subsequent years.
+* Companies can also apply for a refund of the tax value of exploration costs.
+* Investments are subject to accelerated depreciation (“straight line” depreciation over 6 years.)
+
+
+##Exercises:
+1. What does the special tax treatment imply about the initial investment costs of Norwegian offshore oil and gas investments?
+2. Who is in effect paying for most of the upfront investment costs? Is this warranted/problematic?
+3. If we know that there was a high risk that oil and gas production would not be profitable (or allowed) in the near future (10-30 years), would the tax system be neutral?
+
+
+##Large oil and gas fields
+
+Lets take a look at the largest of the oil fields, the ones that have more than 50 million SM3 of recoverable reserves.
+We use the function filter from tidyverse
+```{r}
+big_oil_fields = oil_fields %>% filter(recoverable_oil>50)
+```
+
+The filter command says take the data frame oil_fields and take only the rows where the variable recoverable_oil is more than 50.
+There is a similar way to do this in base r, where you use the block quotes. Here the format is mydataframe[rows, columns], thus the code above says to include all rows where the given variable is above 50, and by leaving the columns portion blank, we tell r to include all columns.
+
+Now I can get the names of all the big oil fields:
+```{r}
+big_oil_fields$name
+```
+
+But this is in alphabetical order, which isn’t helpful. Let’s rearrange by total recoverable oil. We will use the arrange function from tidyverse
+```{r}
+big_oil_fields = arrange(big_oil_fields, desc(recoverable_oil))
+big_oil_fields
+```
+
+
+Then we can plot them
+```{r}
+ggplot(big_oil_fields, aes(x=reorder(name, -recoverable_oil), y=recoverable_oil)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(x="", y="Recoverable Oil, SM3")
+```
+
+Notice a few things:
+First, the reorder command within ggplot tells ggplot to order from highest to lowest. Otherwise it would revert to alphabetical (try it!).
+Second, the theme() function rotates the text on the x-axis so it's readable. theme() lets you change all sorts of details about your graph if you wish. 
+I always end up having to search for the correct parameters to use, but the answer is usually not hard to find.
+
+###Now something a little bit more advanced
+In this section I want to show some of the things you can do with R, but which would be hard or impossible with other software like Excel, Stata, etc. I won’t explain all the code, but feel free to go through carefully and see if you can understand the commands.
+
+In our data set we have latitude and longitude of all our oil fields, so we can go ahead and try to make a map of our fields.
+First, we will install a package that easily allows us to create maps, called ggmaps.
+ggmap uses map data from google maps. The command get_googlemap() imports a map of a certain area directly from google. 
+In order to do this you will need to register for a google cloud account and obtain an api key. You can do this here, or you can skip this part for now.
+
+```{r}
+register_google(key='AIzaSyDlUFz0XXO5OXGhUJH_Fu2VSQpsRs7UDz4')
+```
+
+Then we use
+```{r}
+northsea=get_googlemap(center = c(lon = 2.74, lat = 59.00), zoom=5, maptype="satellite")
+```
+
+(This is a common place to get some errors - often to do with setting up the google cloud account. You can skip this for now if you are getting errors - it is not needed for the assignment or following labs.)
+
+Then we can combine our map with the data in our data frame:
+```{r}
+ggmap(northsea) +
+  geom_point(aes(x = lon, y = lat, size=recoverable_oil, color=extracted),alpha=.7, data = oil_fields)+
+  scale_color_continuous(low="red", high="black")
+```
+
+
+## Assignments and R markdown
+
+## Assignment 1
+
+**1. Create a variable invest_per_rec which is investment per million sm3 in recoverable oil (recoverable_oil).**
+```{r}
+invest_per_rec = oil_fields$invest_per_millsm3/oil_fields$recoverable_oil 
+```
+
+
+Plot these variables against producing_from variable and the original recoverable_oil variable. How do you interpret the results?
+```{r}
+ggplot(oil_fields, aes(x=producing_from, y=log(invest_per_rec))) +
+  geom_point() +
+  labs(x="Production period", y="Investment, Million SM3 Recoverable Oil")
+```
+Figure: Investment per million sm3 against production period (producing_from).
+
+It looks like the investment per sm3 of recoverable oil is increasing with time. One way to interpret this finding is that the longer we extract oil from the discovered oil fields, the more expensive it gets to extract the remaining oil. This makes sense since its a finite resource. The only way to pull this trend down and to the right, is to discover more oil fields, and preferably with large recoverable amounts of oil. 
+
+```{r}
+ggplot(oil_fields, aes(x=recoverable_oil, y=log(invest_per_rec))) +
+  geom_point() +
+  labs(x="Recoverable Oil", y="Investment, Million SM3 Recoverable Oil")
+```
+Figure: Investment per million sm3 against amount of recoverable oil (producing_from).
+
+As we can see from the figure above, the investment per sm3 of recoverable oil increases as the the amount of recoverable oil decreases. This means that the more oil we extract from an oil field, the more expensive the remaining recoverable oil gets. We have to increase our investment into oil extraction to "squeeze" those last SM3s out of the field. 
+
+
+**2. Create a list of the 5 “cheapest” oil fields, that is where the investment is lowest per recoverable oil. What do these tend to have in common?**
+
+```{r}
+oil_fields %>% 
+      filter_all(any_vars(! is.na(.)))
+
+cheap_oil_fields = filter(oil_fields, invest_per_rec<1.204599e+00)
+
+cheap_oil_fields
+```
+
+Note: I struggled with this one. I'm not quite sure how to select the five "cheapest" oil fields from the variable (invest_per_rec).
+
+**3. I have a hypothesis that oil fields farther north are more expensive to exploit. Explore this hypothesis. Do you think it has merit?**
+
+```{r}
+oil_fields = arrange(oil_fields, desc(lat))
+oil_fields
+```
+Table: Oil fields arranged by latitude in descending order. 
+
+To answer this question, I have ordered the oil fields by latitude in descending order. On closer inspection, it looks like the most expensive fields are thos up north. Due to the age of this data, I'm not sure if some of the values are correct. Some of the fields (Snehvit, Goliat, Skuld, Skarv, among others) have zero extracted oil, which means their investment per sm3 recoverable oil is infinite. That can't be true per 2022. Non the less, from looking at the data, I would say there's evidence to support the hypothesis.
+
+**4. Open-ended question: Accessing and importing data**
+
+* Actually finding and accessing interesting data you want can be challenging. Importing it into R into the correct format can also be challenging. Here you get a taste of this.
+
+a. Go to the data portion of the Norwegian Petroleum Directorate
+
+b. The tabs at the top indicate the different types of data that is available by level/theme. Try to find some interesting dataset and download it as a .csv file. (Hint, on the left-hand panel, go down to “table view”, then you get a table of data, which you can export by clicking on “Export CSV”).
+
+c. Once you have downloaded the data, import the data into r using the read_csv() command.
+
+d. If there is a date variable, format that variable as a date (if read_csv() hasn’t automatically done so already)
+
+e. Plot the data in a meaningful way. Interpret the plot. Is there anything puzzling about the data.
+
+
+Figure: A basic plot illustrating the current status of the different types of wells. Note: for some reasone or another, the first column on the x-axis has not content name. I'm not sure what that's about. 
+
+**Teacher's comment: p.s. The field or wellbore tabs might be the most interesting tabs to explore. For the data sets in the field tab, the date is provided as separate columns for month and year. You probably want to combine these into a single date variable. Here is some code to help (I told you working with dates can be tricky):**
+Install package lubridate if you need to: 
+```{r}
+library(lubridate)
+```
+
+DF: the name of my dataframe
+month: name of column with month data
+year: name of column with year data
+
+create a data frame with fake data
+```{r}
+DF = tibble(
+  "month" = 1:6,
+  "year" = 2012:2017
+)
+```
+
+convert to strings
+
+```{r}
+DF["month"] = as.character(DF$month)
+DF["year"] = as.character(DF$year)
+
+DF$date = str_c("1", DF$month, DF$year, sep="-") %>% dmy() %>% as.Date()
+```
+DF
+```{r}
+DF
+```
+
+
+```{r}
+rmarkdown::render(input="labs_ENE434.Rmd", 
+                  output_format="pdf_document",
+                  output_file="labs_ENE434.pdf")
+```
